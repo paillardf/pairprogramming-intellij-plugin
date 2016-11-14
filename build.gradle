@@ -1,0 +1,22 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+}
+
+plugins {
+    id "org.jetbrains.intellij" version "0.1.10"
+}
+
+apply plugin: 'idea'
+apply plugin: 'org.jetbrains.intellij'
+apply plugin: 'java'
+
+intellij {
+    version 'IC-162.2228.15' //IntelliJ IDEA dependency
+    plugins 'coverage' //Bundled plugin dependencies
+    pluginName 'pairprogramming'
+}
+
+group 'com.sertook'
+version '1.0.0-SNAPSHOT' // Plugin version

@@ -1,0 +1,55 @@
+<idea-plugin>
+    <id>com.sertook</id>
+    <name>pairprogramming</name>
+    <version>0.0.1</version>
+    <vendor email="paillard.f@gmail.com" url="sertook.com">Florian Paillard</vendor>
+
+    <description><![CDATA[
+      Pair programming plugin.<br>
+    ]]></description>
+
+    <change-notes><![CDATA[
+      Initial release.<br>
+    ]]>
+    </change-notes>
+
+    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
+    <idea-version since-build="162"/>
+
+    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
+         on how to target different products -->
+    <!-- uncomment to enable plugin in all products
+    <depends>com.intellij.modules.lang</depends>
+    -->
+
+    <extensions defaultExtensionNs="com.intellij">
+
+        <projectService serviceInterface="com.sertook.pairprogramming.service.PairProgrammingService"
+                        serviceImplementation="com.sertook.pairprogramming.service.PairProgrammingServiceImpl"/>
+
+    </extensions>
+
+    <application-components>
+    </application-components>
+
+    <project-components>
+        <component>
+            <implementation-class>com.sertook.pairprogramming.PairProgrammingComponent</implementation-class>
+        </component>
+    </project-components>
+
+    <actions>
+        <group id="PairProgramming.Menu.Find" text="Pair programming" description="Pair programming menu">
+            <add-to-group group-id="WelcomeScreen.QuickStart" anchor="last"/>
+            <action id="PairProgramming.Find" class="com.sertook.pairprogramming.FindARoomAction"
+                    text="Pair programming" icon="PairProgrammingIcons.PAIR_ICON" description="Help your bro"/>
+        </group>
+        <group id="PairProgramming.Menu.Create" text="Pair programming" description="Pair programming menu">
+            <add-to-group group-id="ToolbarMakeGroup" anchor="first"/>
+            <add-to-group group-id="HelpMenu" anchor="first"/>
+            <action id="PairProgramming.CreateARoomAction" class="com.sertook.pairprogramming.CreateARoomAction"
+                    text="Pair programming" icon="PairProgrammingIcons.PAIR_ICON" description="Help your bro"/>
+        </group>
+    </actions>
+
+</idea-plugin>
