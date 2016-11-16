@@ -41,6 +41,7 @@
     <actions>
         <group id="PairProgramming.Menu.Find" text="Pair programming" description="Pair programming menu">
             <add-to-group group-id="WelcomeScreen.QuickStart" anchor="last"/>
+            <add-to-group group-id="FileMenu" anchor="after" relative-to-action="OpenFile"/>
             <action id="PairProgramming.Find" class="com.sertook.pairprogramming.FindARoomAction"
                     text="Pair programming" icon="PairProgrammingIcons.PAIR_ICON" description="Help your bro"/>
         </group>

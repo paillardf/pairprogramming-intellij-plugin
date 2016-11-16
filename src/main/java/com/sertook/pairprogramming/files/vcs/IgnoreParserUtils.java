@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package com.sertook.pairprogramming.files;
+package com.sertook.pairprogramming.files.vcs;
 
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.util.containers.ContainerUtil;
@@ -36,16 +36,16 @@ import java.util.HashMap;
  * @author Jakub Chrzanowski <jakub@hsz.mobi>
  * @since 0.5
  */
-public class Glob {
+public class IgnoreParserUtils {
     /**
      * Cache map that holds processed regex statements to the glob rules.
      */
     private static final HashMap<String, String> cache = ContainerUtil.newHashMap();
 
     /**
-     * Private constructor to prevent creating {@link Glob} instance.
+     * Private constructor to prevent creating {@link IgnoreParserUtils} instance.
      */
-    private Glob() {
+    private IgnoreParserUtils() {
     }
 
 
@@ -56,13 +56,15 @@ public class Glob {
      * @param acceptChildren Matches directory children
      * @return regex {@link String}
      */
-    @NotNull
     public static String createRegex(@NotNull String glob, boolean acceptChildren) {
         glob = glob.trim();
         String cached = cache.get(glob);
         if (cached != null) {
             return cached;
         }
+
+        if (glob.startsWith("#") || glob.replaceAll(" ", "").isEmpty())
+            return null;
 
         StringBuilder sb = new StringBuilder("^");
         boolean escape = false, star = false, doubleStar = false, bracket = false;

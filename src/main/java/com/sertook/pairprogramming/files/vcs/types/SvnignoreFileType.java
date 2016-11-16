@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package com.sertook.pairprogramming.files.vcs.impl;
+package com.sertook.pairprogramming.files.vcs.types;
 
 import com.sertook.pairprogramming.files.vcs.IgnoreFileProvider;
 
@@ -35,10 +35,10 @@ import java.util.List;
  * @author Jakub Chrzanowski <jakub@hsz.mobi>
  * @since 0.1
  */
-public class GitignoreFileType implements IgnoreFileProvider {
-    public static final String FILENAME = ".gitignore";
+public class SvnignoreFileType implements IgnoreFileProvider {
+    public static final String FILENAME = ".svnignore";
 
-    public static GitignoreFileType INSTANCE = new GitignoreFileType();
+    public static SvnignoreFileType INSTANCE = new SvnignoreFileType();
 
     @Override
     public String getFileName() {
@@ -47,7 +47,7 @@ public class GitignoreFileType implements IgnoreFileProvider {
 
     @Override
     public List<String> ignoredFolder() {
-        return Collections.singletonList(".git/");
+        return Collections.singletonList(".svn/");
     }
 
 }

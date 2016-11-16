@@ -1,18 +1,17 @@
-package com.sertook.pairprogramming.files;
+package com.sertook.pairprogramming.files.vcs;
 
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.text.StringUtil;
-import com.intellij.openapi.vcs.ProjectLevelVcsManager;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.impl.source.PsiFileImpl;
 import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.containers.hash.HashMap;
-import com.sertook.pairprogramming.files.vcs.IgnoreFileProvider;
-import com.sertook.pairprogramming.files.vcs.impl.GitignoreFileType;
-import com.sertook.pairprogramming.files.vcs.impl.SvnignoreFileType;
+import com.sertook.pairprogramming.files.Utils;
+import com.sertook.pairprogramming.files.vcs.types.GitignoreFileType;
+import com.sertook.pairprogramming.files.vcs.types.SvnignoreFileType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -33,6 +32,19 @@ public class FileIgnoreStore {
 
     private ConcurrentMap<PsiFile, Set<Pattern>> map = ContainerUtil.newConcurrentMap();
     private final HashMap<VirtualFile, Status> statuses = new HashMap<>();
+    private List<IgnoreFileProvider> ignoreFileProviders = Arrays.asList(
+            GitignoreFileType.INSTANCE,
+            SvnignoreFileType.INSTANCE
+    );
+
+    public boolean isIgnoreFile(VirtualFile file) {
+        for (IgnoreFileProvider provider : ignoreFileProviders) {
+            if (file.getName().equals(provider.getFileName())) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * Status of the file.
@@ -54,10 +66,7 @@ public class FileIgnoreStore {
 
     public void init() {
         ArrayList<VirtualFile> ignoreFiles = new ArrayList<>();
-        List<IgnoreFileProvider> ignoreFileProviders = Arrays.asList(
-                GitignoreFileType.INSTANCE,
-                SvnignoreFileType.INSTANCE
-        );
+
 
         Utils.findFiles(project.getBaseDir(), ignoreFileProviders, ignoreFiles);
 
@@ -90,7 +99,9 @@ public class FileIgnoreStore {
         runVisitorInReadAction(file, new IgnoreVisitor() {
             @Override
             public void visitLine(String line) {
-                set.add(Pattern.compile(Glob.createRegex(line, false)));
+                String regex = IgnoreParserUtils.createRegex(line, false);
+                if (regex != null)
+                    set.add(Pattern.compile(regex));
             }
         });
         map.put(file, set);
@@ -98,53 +109,59 @@ public class FileIgnoreStore {
 
 
     public boolean isFileIgnored(@NotNull VirtualFile file) {
+        return getFileStatus(file).equals(Status.IGNORED);
+    }
+
+    private Status getFileStatus(@NotNull VirtualFile file) {
         Status status = statuses.get(file);
 
-        if (status == null || status.equals(Status.UNTOUCHED)) {
+        if (status == null) {
             status = getParentStatus(file);
             statuses.put(file, status);
+        } else {
+            return status;
         }
 
-        for (final PsiFile ignoreFile : map.keySet()) {
-            final VirtualFile ignoreFileParent = ignoreFile.getVirtualFile().getParent();
+        if (file.isDirectory() && file.getName().equals(".idea")) {
+            return Status.IGNORED;
+        }
 
-            if (Utils.isUnder(file, ignoreFileParent)) {
+        if (status == Status.UNTOUCHED) {
+            for (final PsiFile ignoreFile : map.keySet()) {
+                final VirtualFile ignoreFileParent = ignoreFile.getVirtualFile().getParent();
 
-                final String path = Utils.getRelativePath(ignoreFileParent, file);
-                if (StringUtil.isEmpty(path)) {
-                    continue;
-                }
+                if (Utils.isUnder(file, ignoreFileParent)) {
 
-                Set<Pattern> patterns = map.get(ignoreFile);
-                for (Pattern pattern : patterns) {
-                    if (pattern.matcher(path).matches()) {
-                        status = Status.IGNORED;
+                    final String path = Utils.getRelativePath(ignoreFileParent, file);
+                    if (StringUtil.isEmpty(path)) {
+                        continue;
+                    }
+
+                    Set<Pattern> patterns = map.get(ignoreFile);
+                    for (Pattern pattern : patterns) {
+                        if (pattern.matcher(path).matches()) {
+                            status = Status.IGNORED;
+                            break;
+                        }
+                    }
+
+                    if (!status.equals(Status.UNTOUCHED)) {
                         break;
                     }
-                }
-
-                if (!status.equals(Status.UNTOUCHED)) {
-                    break;
                 }
             }
         }
 
         statuses.put(file, status);
-        return status.equals(Status.IGNORED);
+        return status;
     }
 
 
     @NotNull
     private Status getParentStatus(@NotNull VirtualFile file) {
         VirtualFile parent = file.getParent();
-        VirtualFile vcsRoot = ProjectLevelVcsManager.getInstance(project).getVcsRootFor(file);
-
-        while (parent != null && !parent.equals(project.getBaseDir()) && (vcsRoot == null || !vcsRoot.equals(parent))) {
-            final Status status = statuses.get(parent);
-            if (status != null) {
-                return status;
-            }
-            parent = parent.getParent();
+        if (Utils.isUnder(parent, project.getBaseDir())) {
+            return getFileStatus(parent);
         }
         return Status.UNTOUCHED;
     }

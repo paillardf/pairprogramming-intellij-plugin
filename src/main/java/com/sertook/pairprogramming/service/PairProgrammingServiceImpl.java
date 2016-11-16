@@ -1,106 +1,127 @@
 package com.sertook.pairprogramming.service;
 
+import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationType;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.*;
-import com.intellij.psi.PsiManager;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.util.containers.ContainerUtil;
 import com.sertook.pairprogramming.ActionDelegate;
-import com.sertook.pairprogramming.CommunicatioHelper;
 import com.sertook.pairprogramming.CreateARoomAction;
-import com.sertook.pairprogramming.files.FileIgnoreStore;
+import com.sertook.pairprogramming.files.SyncFileManager;
+import com.sertook.pairprogramming.models.FileInfos;
+import com.sertook.pairprogramming.models.FileWrapper;
+import com.sertook.pairprogramming.models.ProjectStatus;
+import com.sertook.pairprogramming.network.CommunicatioHelper;
 import icons.PairProgrammingIcons;
-import org.jetbrains.annotations.NotNull;
+import com.intellij.openapi.diagnostic.Logger;
+
+import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by florian on 13/11/2016.
  */
 public class PairProgrammingServiceImpl implements PairProgrammingService {
     private final Project project;
+    private final SyncFileManager syncFileManager;
     private CommunicatioHelper communicatioHelper = new CommunicatioHelper();
-    private FileIgnoreStore fileIgnoreStore;
+
+    private Logger logger = Logger.getInstance(this.getClass());
 
 
     public PairProgrammingServiceImpl(Project project) {
         this.project = project;
+        syncFileManager = new SyncFileManager(project);
+
     }
 
     public boolean isStarted() {
         return communicatioHelper.isOpen();
     }
 
-    public void start(ActionDelegate<String> delegate) {
-        fileIgnoreStore = new FileIgnoreStore(project);
-        fileIgnoreStore.init();
 
-        drawFileTree(project.getBaseDir(), fileIgnoreStore);
+    public List<FileInfos> lastRemotesFiles;
+    List<String> remoteNeededFile = ContainerUtil.newArrayList();
 
 
-        PsiManager.getInstance(project);
-        VirtualFileManager.getInstance().addVirtualFileListener(new VirtualFileListener() {
-            @Override
-            public void propertyChanged(@NotNull VirtualFilePropertyEvent virtualFilePropertyEvent) {
+    public void start(String ip) {
 
+
+        communicatioHelper.open(ip, new CommunicatioHelper.CommunicationListener() {
+
+
+            public void onMessageReceived(Object message) {
+                if (message instanceof ProjectStatus) {
+                    ProjectStatus remoteProjectStatus = (ProjectStatus) message;
+                    List<FileInfos> files = remoteProjectStatus.getFiles();
+
+                    if (!FileInfos.listEquals(files, lastRemotesFiles)) {
+                        sendProjectInfos();
+                    }
+                    lastRemotesFiles = files;
+                    if (remoteProjectStatus.getNeededFiles() != null && !remoteProjectStatus.getNeededFiles().isEmpty()) {
+                        remoteNeededFile = ContainerUtil.newArrayList(remoteProjectStatus.getNeededFiles());
+                    }
+
+                } else if (message instanceof FileWrapper) {
+                    ((FileWrapper) message).write(project, new ActionDelegate<VirtualFile>() {
+                        @Override
+                        public void onSuccess(VirtualFile result) {
+                            sendProjectInfos();
+                        }
+
+                        @Override
+                        public void onError(Exception error) {
+                            logger.error("Can write received file", error);
+                        }
+                    });
+                }
             }
 
-            @Override
-            public void contentsChanged(@NotNull VirtualFileEvent virtualFileEvent) {
-                System.out.println(virtualFileEvent.getFileName());
-            }
+
+            boolean lock = false;
 
             @Override
-            public void fileCreated(@NotNull VirtualFileEvent virtualFileEvent) {
+            public void onMessageSent() {
 
-            }
+                if (!communicatioHelper.isSending() && !lock && !remoteNeededFile.isEmpty()) {
+                    lock = true;
+                    String path = remoteNeededFile.remove(remoteNeededFile.size()-1);
+                    logger.info(project.getName() + " send : " + path);
+                    VirtualFile virtualFile = project.getBaseDir().findFileByRelativePath(path);
+                    FileWrapper.create(project, virtualFile, new ActionDelegate<FileWrapper>() {
+                        @Override
+                        public void onSuccess(FileWrapper result) {
+                            lock = false;
+                            communicatioHelper.sendMessage(result);
+                        }
 
-            @Override
-            public void fileDeleted(@NotNull VirtualFileEvent virtualFileEvent) {
-
-            }
-
-            @Override
-            public void fileMoved(@NotNull VirtualFileMoveEvent virtualFileMoveEvent) {
-
-            }
-
-            @Override
-            public void fileCopied(@NotNull VirtualFileCopyEvent virtualFileCopyEvent) {
-
-            }
-
-            @Override
-            public void beforePropertyChange(@NotNull VirtualFilePropertyEvent virtualFilePropertyEvent) {
-
-            }
-
-            @Override
-            public void beforeContentsChange(@NotNull VirtualFileEvent virtualFileEvent) {
-
-            }
-
-            @Override
-            public void beforeFileDeletion(@NotNull VirtualFileEvent virtualFileEvent) {
-
-            }
-
-            @Override
-            public void beforeFileMovement(@NotNull VirtualFileMoveEvent virtualFileMoveEvent) {
-
-            }
-        });
-
-
-        communicatioHelper.open(null, new CommunicatioHelper.CommunicationListener() {
-            public void onMessageReceived(String msg) {
+                        @Override
+                        public void onError(Exception error) {
+                            lock = false;
+                            remoteNeededFile.add(path);
+                            logger.error("can't write file", error);
+                        }
+                    });
+                }
 
             }
 
             public void onServerError(Throwable throwable) {
+                if (throwable instanceof SocketException) {
+                    stop();
+                    new Notification("PairProgramming", "Oups", "We get a network issue", NotificationType.ERROR).notify(project);
+                }
 
             }
 
-            public void onStatusChanged() {
+            public void onStatusChanged(String title, String message) {
+
+                new Notification("PairProgramming", title, message, NotificationType.INFORMATION).notify(project);
 
                 AnAction action = ActionManager.getInstance().getAction(CreateARoomAction.ID);
                 action.setDefaultIcon(false);
@@ -108,6 +129,11 @@ public class PairProgrammingServiceImpl implements PairProgrammingService {
                 if (communicatioHelper.isOpen() && communicatioHelper.isConnected()) {
                     templatePresentation.setIcon(PairProgrammingIcons.PAIR_ICON_ON);
                     templatePresentation.setText("Session On");
+
+                    ProjectStatus projectStatus = new ProjectStatus();
+                    projectStatus.setFiles(syncFileManager.getCurrentFilesInfos());
+                    communicatioHelper.sendMessage(projectStatus);
+
                 } else if (communicatioHelper.isOpen()) {
                     templatePresentation.setIcon(PairProgrammingIcons.PAIR_ICON_WAITING);
                     templatePresentation.setText("Waiting a bro");
@@ -118,22 +144,36 @@ public class PairProgrammingServiceImpl implements PairProgrammingService {
             }
         });
 
+        syncFileManager.start(new SyncFileManager.FileChangeListener() {
+            @Override
+            public void filesChanged(List<FileInfos> infos) {
 
-    }
-
-    private void drawFileTree(VirtualFile baseDir, FileIgnoreStore fileIgnoreStore) {
-        if (!fileIgnoreStore.isFileIgnored(baseDir)) {
-            System.out.println(baseDir.getCanonicalPath());
-            for (VirtualFile file : baseDir.getChildren()) {
-                drawFileTree(file, fileIgnoreStore);
+                sendProjectInfos();
             }
-        } else {
-            System.out.println("ignored: " + baseDir.getCanonicalPath());
-        }
+        });
+
     }
 
+    public void sendProjectInfos() {
 
-    public void stop(ActionDelegate<String> delegate) {
+        logger.info(project.getName() + " send project infos");
+
+        List<String> neededFiles = new ArrayList<String>();
+        if (lastRemotesFiles != null) {
+            neededFiles.addAll(syncFileManager.getNeededFiles(lastRemotesFiles));
+        }
+        if (communicatioHelper.canSent()) {
+            ArrayList<FileInfos> filesInfos = syncFileManager.getCurrentFilesInfos();
+            ProjectStatus projectStatus = new ProjectStatus();
+            projectStatus.setFiles(filesInfos);
+            projectStatus.setNeededFiles(neededFiles);
+            communicatioHelper.sendMessage(projectStatus);
+        }
+
+    }
+
+    public void stop() {
         communicatioHelper.stop();
+        syncFileManager.stop();
     }
 }

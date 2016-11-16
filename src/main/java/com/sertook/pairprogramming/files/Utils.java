@@ -6,6 +6,7 @@ import com.sertook.pairprogramming.files.vcs.IgnoreFileProvider;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,7 +17,14 @@ public class Utils {
 
     @Nullable
     public static String getRelativePath(@NotNull VirtualFile directory, @NotNull VirtualFile file) {
-        return VfsUtilCore.getRelativePath(file, directory, '/') + (file.isDirectory() ? '/' : "");
+        if (directory.getPath().equals(file.getPath()))
+            return "";
+        String relativePath = VfsUtilCore.getRelativePath(file, directory, File.separatorChar);
+        if (relativePath == null) {
+            relativePath = "";
+        }
+        String path = relativePath + (file.isDirectory() ? File.separatorChar : "");
+        return path;
     }
 
     public static boolean isUnder(@NotNull VirtualFile file, @NotNull VirtualFile directory) {

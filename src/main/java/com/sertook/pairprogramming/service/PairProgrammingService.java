@@ -1,5 +1,6 @@
 package com.sertook.pairprogramming.service;
 
+import com.intellij.openapi.util.Key;
 import com.sertook.pairprogramming.ActionDelegate;
 
 /**
@@ -8,7 +9,12 @@ import com.sertook.pairprogramming.ActionDelegate;
 public interface PairProgrammingService {
     boolean isStarted();
 
-    void start(ActionDelegate<String> delegate);
+    void start(String ip);
 
-    void stop(ActionDelegate<String> delegate);
+    void stop();
+
+
+    Key<String> EXTRA_PAIR_PROGRAMMING_KEY = Key.create("extra.pairprogramming.ip");
+
+
 }

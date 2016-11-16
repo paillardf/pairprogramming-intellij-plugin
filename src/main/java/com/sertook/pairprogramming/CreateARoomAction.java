@@ -3,6 +3,8 @@ package com.sertook.pairprogramming;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.components.ServiceManager;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Key;
 import com.sertook.pairprogramming.service.PairProgrammingService;
 
 /**
@@ -13,11 +15,13 @@ public class CreateARoomAction extends AnAction {
     public static final String ID = "PairProgramming.CreateARoomAction";
 
     public void actionPerformed(AnActionEvent anActionEvent) {
-        PairProgrammingService service = ServiceManager.getService(anActionEvent.getProject(), PairProgrammingService.class);
+        Project project = getEventProject(anActionEvent);
+        PairProgrammingService service = ServiceManager.getService(project, PairProgrammingService.class);
         if (!service.isStarted()) {
-            service.start(null);
+            String ip = project.getUserData(PairProgrammingService.EXTRA_PAIR_PROGRAMMING_KEY);
+            service.start(ip);
         } else {
-            service.stop(null);
+            service.stop();
         }
     }
 
