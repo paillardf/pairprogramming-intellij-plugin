@@ -123,10 +123,8 @@ public class FileIgnoreStore {
         }
 
         if (file.isDirectory() && file.getName().equals(".idea")) {
-            return Status.IGNORED;
-        }
-
-        if (status == Status.UNTOUCHED) {
+            status = Status.IGNORED;
+        } else if (status == Status.UNTOUCHED) {
             for (final PsiFile ignoreFile : map.keySet()) {
                 final VirtualFile ignoreFileParent = ignoreFile.getVirtualFile().getParent();
 

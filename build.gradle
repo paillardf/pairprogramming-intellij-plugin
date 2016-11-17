@@ -13,9 +13,12 @@ apply plugin: 'org.jetbrains.intellij'
 apply plugin: 'java'
 
 intellij {
-    version 'IC-162.2228.15' //IntelliJ IDEA dependency
-    plugins 'coverage' //Bundled plugin dependencies
+    version 'IC-2016.2.4' //IntelliJ IDEA dependency
+    plugins 'android' //Bundled plugin dependencies
     pluginName 'pairprogramming'
+
+    updateSinceUntilBuild false
+    sameSinceUntilBuild false
 }
 
 group 'com.sertook'

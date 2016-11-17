@@ -5,6 +5,7 @@ import com.intellij.notification.NotificationType;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.Presentation;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.containers.ContainerUtil;
@@ -16,7 +17,6 @@ import com.sertook.pairprogramming.models.FileWrapper;
 import com.sertook.pairprogramming.models.ProjectStatus;
 import com.sertook.pairprogramming.network.CommunicatioHelper;
 import icons.PairProgrammingIcons;
-import com.intellij.openapi.diagnostic.Logger;
 
 import java.net.SocketException;
 import java.util.ArrayList;
@@ -60,9 +60,9 @@ public class PairProgrammingServiceImpl implements PairProgrammingService {
                     List<FileInfos> files = remoteProjectStatus.getFiles();
 
                     if (!FileInfos.listEquals(files, lastRemotesFiles)) {
+                        lastRemotesFiles = files;
                         sendProjectInfos();
                     }
-                    lastRemotesFiles = files;
                     if (remoteProjectStatus.getNeededFiles() != null && !remoteProjectStatus.getNeededFiles().isEmpty()) {
                         remoteNeededFile = ContainerUtil.newArrayList(remoteProjectStatus.getNeededFiles());
                     }
@@ -90,7 +90,7 @@ public class PairProgrammingServiceImpl implements PairProgrammingService {
 
                 if (!communicatioHelper.isSending() && !lock && !remoteNeededFile.isEmpty()) {
                     lock = true;
-                    String path = remoteNeededFile.remove(remoteNeededFile.size()-1);
+                    String path = remoteNeededFile.remove(remoteNeededFile.size() - 1);
                     logger.info(project.getName() + " send : " + path);
                     VirtualFile virtualFile = project.getBaseDir().findFileByRelativePath(path);
                     FileWrapper.create(project, virtualFile, new ActionDelegate<FileWrapper>() {
@@ -125,6 +125,8 @@ public class PairProgrammingServiceImpl implements PairProgrammingService {
 
                 AnAction action = ActionManager.getInstance().getAction(CreateARoomAction.ID);
                 action.setDefaultIcon(false);
+
+
                 Presentation templatePresentation = action.getTemplatePresentation();
                 if (communicatioHelper.isOpen() && communicatioHelper.isConnected()) {
                     templatePresentation.setIcon(PairProgrammingIcons.PAIR_ICON_ON);
@@ -133,6 +135,9 @@ public class PairProgrammingServiceImpl implements PairProgrammingService {
                     ProjectStatus projectStatus = new ProjectStatus();
                     projectStatus.setFiles(syncFileManager.getCurrentFilesInfos());
                     communicatioHelper.sendMessage(projectStatus);
+
+                    sendProjectInfos();
+
 
                 } else if (communicatioHelper.isOpen()) {
                     templatePresentation.setIcon(PairProgrammingIcons.PAIR_ICON_WAITING);
@@ -173,6 +178,8 @@ public class PairProgrammingServiceImpl implements PairProgrammingService {
     }
 
     public void stop() {
+        lastRemotesFiles = null;
+        remoteNeededFile = null;
         communicatioHelper.stop();
         syncFileManager.stop();
     }

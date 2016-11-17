@@ -1,9 +1,13 @@
 package com.sertook.pairprogramming.models;
 
-import com.intellij.diff.comparison.ComparisonMergeUtil;
+import com.intellij.diff.comparison.ComparisonManager;
+import com.intellij.diff.comparison.ComparisonPolicy;
+import com.intellij.diff.fragments.LineFragment;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.intellij.openapi.progress.util.CommandLineProgress;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -14,6 +18,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.charset.Charset;
+import java.util.List;
 
 /**
  * Created by florian on 15/11/2016.
@@ -57,40 +62,58 @@ public class FileWrapper implements Serializable {
     }
 
     public void write(Project project, final ActionDelegate<VirtualFile> delegate) {
-        ApplicationManager.getApplication().invokeLater(new Runnable() {
+        WriteCommandAction.runWriteCommandAction(project, new Runnable() {
             @Override
             public void run() {
-                ApplicationManager.getApplication().runWriteAction(new Runnable() {
-                    @Override
-                    public void run() {
-                        VirtualFile file = project.getBaseDir().findFileByRelativePath(path + File.separator + fileName);
-                        if (file != null && file.exists()) {
-                            if (file.getFileType().equals(fileType) && !binary) {
-                                Document document = FileDocumentManager.getInstance().getDocument(file);
-                                String oldText = document.getText();
-                                CharSequence result = ComparisonMergeUtil.tryResolveConflict(oldText, oldText, new String(data, Charset.forName(charset)));
+                VirtualFile file = project.getBaseDir().findFileByRelativePath(path + File.separator + fileName);
+                if (file != null && file.exists()) {
+                    if (file.getFileType().getName().equals(fileType) && !binary) {
+                        Charset charset = Charset.forName(FileWrapper.this.charset);
+
+                        Document document = FileDocumentManager.getInstance().getDocument(file);
+                        String oldText = document.getText();
+                        String newText = new String(data, charset);
+                        List<LineFragment> linesList = ComparisonManager.getInstance().compareLines(oldText, newText, ComparisonPolicy.DEFAULT, new CommandLineProgress());
+                        //CharSequence result = ComparisonMergeUtil.tryResolveConflict(oldText, oldText, );
+
+                        int size = linesList.size();
+                        if (size != 0) {
+                            for (int i = size - 1; i >= 0; i--) {
+                                LineFragment line = linesList.get(i);
+                                document.replaceString(line.getStartOffset1(), line.getEndOffset1(), newText.subSequence(line.getStartOffset2(), line.getEndOffset2()));
+                            }
+                            FileDocumentManager.getInstance().saveDocument(document);
+                        }
+
+                                /*String result = null;
                                 if (result == null) {
                                     result = oldText;
                                 }
-                                document.setText(result);
-                                FileDocumentManager.getInstance().saveDocument(document);
-                            }
-                        } else if (file == null) {
-                            try {
-                                VfsUtil.createDirectoryIfMissing(project.getBaseDir(), path);
-                                VirtualFile childData = project.getBaseDir().findFileByRelativePath(path).createChildData(this, fileName);
-                                childData.setBinaryContent(data);
-                                childData.refresh(true, false);
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                        data = null;
+                                try {
+                                    file.setBinaryContent(result.toString().getBytes(charset));
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }*/
+                        //document.setText(result);
+                        //FileDocumentManager.getInstance().saveDocument(document);
                     }
-                });
+                } else if (file == null)
 
+                {
+                    try {
+                        VfsUtil.createDirectoryIfMissing(project.getBaseDir(), path);
+                        VirtualFile childData = project.getBaseDir().findFileByRelativePath(path).createChildData(this, fileName);
+                        childData.setBinaryContent(data);
+                        childData.refresh(true, false);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                data = null;
             }
         });
+
 
     }
 }

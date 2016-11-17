@@ -35,18 +35,7 @@ public class FindARoomAction extends AnAction {
 
         boolean isOk = builder.show() == DialogWrapper.OK_EXIT_CODE;
         if (isOk) {
-            String ip = form.getIp();
-            File file = new File(System.getProperty("user.home") + File.separator + "pair" + File.separator + ip);
-            if (!file.exists())
-                file.mkdirs();
-
-            //Project project = ProjectManager.getInstance().createProject("pairprogramming", file.getPath());
-
-
-            Project project = ProjectUtil.openOrImport(file.getPath(), null, true);
-            project.putUserData(EXTRA_PAIR_PROGRAMMING_KEY, ip);
-            PairProgrammingService service = ServiceManager.getService(project, PairProgrammingService.class);
-            service.start(ip);
+            openPairProgrammingProject(form.getIp());
             /*StartupManager.getInstance(project).runWhenProjectIsInitialized((DumbAwareRunnable) () -> {
 
                 ProjectManager.getInstance().reloadProject(project);
@@ -62,6 +51,20 @@ public class FindARoomAction extends AnAction {
             FrameSwitcherUtils.getRecentProjectsManagerBase().updateLastProjectPath();*/
         }
 
+    }
+
+    public static void openPairProgrammingProject(String ip) {
+        File file = new File(System.getProperty("user.home") + File.separator + "pair" + File.separator + ip);
+        if (!file.exists())
+            file.mkdirs();
+
+        //Project project = ProjectManager.getInstance().createProject("pairprogramming", file.getPath());
+
+
+        Project project = ProjectUtil.openOrImport(file.getPath(), null, true);
+        project.putUserData(EXTRA_PAIR_PROGRAMMING_KEY, ip);
+        PairProgrammingService service = ServiceManager.getService(project, PairProgrammingService.class);
+        service.start(ip);
     }
 
 

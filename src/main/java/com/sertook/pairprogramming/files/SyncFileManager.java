@@ -1,5 +1,6 @@
 package com.sertook.pairprogramming.files;
 
+import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileEvent;
@@ -32,10 +33,12 @@ public class SyncFileManager {
     }
 
     public void start(FileChangeListener listener) {
-        init();
+        if (virtualFileListener != null) {
+            stop();
+        }
         this.listener = listener;
 
-
+        init();
         virtualFileListener = new SimpleVirtualFileListener(project) {
 
             @Override
@@ -48,8 +51,8 @@ public class SyncFileManager {
 
                 if (!ignoreStore.isFileIgnored(file)) {
                     addFile(file);
+                    notifyChange();
                 }
-                notifyChange();
             }
         };
 
@@ -72,6 +75,7 @@ public class SyncFileManager {
     }
 
     private void init() {
+
         ignoreStore.init();
         analyseFiles(project.getBaseDir());
     }
@@ -106,18 +110,26 @@ public class SyncFileManager {
                 FileInfos infosLocal = listenFiles.get(infosRemote.getPath());
                 if (!infosRemote.isExist()) {
                     if (infosLocal.getTimeStamp() < infosRemote.getTimeStamp()) {
-                        try {
-                            project.getBaseDir().findFileByRelativePath(infosLocal.getPath()).delete(this);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
+                        WriteCommandAction.runWriteCommandAction(project, new Runnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    VirtualFile file = project.getBaseDir().findFileByRelativePath(infosLocal.getPath());
+                                    if (file != null)
+                                        file.delete(this);
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        });
+
                     }
                 } else {
-                    if (infosLocal.getTimeStamp() < infosRemote.getTimeStamp() && infosLocal.getLenght() != infosRemote.getLenght()) {
+                    if (infosLocal.getTimeStamp() < infosRemote.getTimeStamp() && !infosLocal.isIdentical(infosRemote)) {
                         neededFilePath.add(infosRemote.getPath());
                     }
                 }
-            } else {
+            } else if (infosRemote.isExist()) {
                 neededFilePath.add(infosRemote.getPath());
             }
         }

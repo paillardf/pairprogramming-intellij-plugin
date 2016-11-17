@@ -14,7 +14,7 @@
     </change-notes>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
-    <idea-version since-build="162"/>
+    <idea-version since-build="123.72"/>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
          on how to target different products -->
@@ -43,6 +43,7 @@
             <add-to-group group-id="WelcomeScreen.QuickStart" anchor="last"/>
             <add-to-group group-id="FileMenu" anchor="after" relative-to-action="OpenFile"/>
             <action id="PairProgramming.Find" class="com.sertook.pairprogramming.FindARoomAction"
+
                     text="Pair programming" icon="PairProgrammingIcons.PAIR_ICON" description="Help your bro"/>
         </group>
         <group id="PairProgramming.Menu.Create" text="Pair programming" description="Pair programming menu">

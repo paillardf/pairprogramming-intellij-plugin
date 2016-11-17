@@ -1,6 +1,9 @@
 package com.sertook.pairprogramming.network;
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
+import com.sertook.pairprogramming.FindARoomAction;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.io.*;
@@ -88,6 +91,7 @@ public class CommunicatioHelper {
 
     public static class ServerRunnable implements Runnable {
 
+
         private final CommunicationListener listener;
         private String ip;
         private int port;
@@ -123,9 +127,15 @@ public class CommunicatioHelper {
             try {
 
                 if (ip == null) {
-                    serverSocket = new ServerSocket(0);
-                    listener.onStatusChanged("Server started", "Your bro can join on: " + InetAddress.getLocalHost().getHostAddress() + ":" + serverSocket.getLocalPort());
-                    socket = serverSocket.accept(); //TODO unlock
+                    serverSocket = getServerSocket();
+                    String ipInfo = InetAddress.getLocalHost().getHostAddress() + ":" + serverSocket.getLocalPort();
+                    listener.onStatusChanged("Server started", "Your bro can join on: " + ipInfo);
+
+                    //TODO remove me
+                    ApplicationManager.getApplication().invokeLater(() ->  FindARoomAction.openPairProgrammingProject(ipInfo));
+
+
+                    socket = serverSocket.accept();
                 } else {
                     socket = new Socket(ip, port);
                 }
@@ -157,6 +167,25 @@ public class CommunicatioHelper {
                 }
             }
             listener.onStatusChanged("Server stopped", "Time to work alone :p");
+        }
+
+        int lastPort = 0;
+
+        @NotNull
+        private ServerSocket getServerSocket() throws IOException {
+            try {
+                ServerSocket serverSocket = new ServerSocket(lastPort);
+                lastPort = serverSocket.getLocalPort();
+                return serverSocket;
+            } catch (IOException e) {
+                if (lastPort != 0) {
+                    lastPort = 0;
+                    return getServerSocket();
+
+                } else {
+                    throw e;
+                }
+            }
         }
 
         ObjectOutputStream getOutput() {

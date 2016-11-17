@@ -46,12 +46,16 @@ public abstract class SimpleVirtualFileListener implements VirtualFileListener {
 
     @Override
     public void fileMoved(@NotNull VirtualFileMoveEvent virtualFileMoveEvent) {
-
+        VirtualFile file = virtualFileMoveEvent.getFile();
+        if (file.isDirectory() || Utils.isUnder(file, project.getBaseDir()))
+            onFileEvent(virtualFileMoveEvent);
     }
 
     @Override
     public void fileCopied(@NotNull VirtualFileCopyEvent virtualFileCopyEvent) {
-
+        VirtualFile file = virtualFileCopyEvent.getFile();
+        if (file.isDirectory() || Utils.isUnder(file, project.getBaseDir()))
+            onFileEvent(virtualFileCopyEvent);
     }
 
     @Override
