@@ -132,7 +132,7 @@ public class CommunicatioHelper {
                     listener.onStatusChanged("Server started", "Your bro can join on: " + ipInfo);
 
                     //TODO remove me
-                    ApplicationManager.getApplication().invokeLater(() ->  FindARoomAction.openPairProgrammingProject(ipInfo));
+                    //ApplicationManager.getApplication().invokeLater(() ->  FindARoomAction.openPairProgrammingProject(ipInfo));
 
 
                     socket = serverSocket.accept();

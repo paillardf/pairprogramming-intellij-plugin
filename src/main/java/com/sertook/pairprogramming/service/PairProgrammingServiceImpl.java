@@ -113,6 +113,7 @@ public class PairProgrammingServiceImpl implements PairProgrammingService {
 
             public void onServerError(Throwable throwable) {
                 if (throwable instanceof SocketException) {
+                    logger.error(throwable);
                     stop();
                     new Notification("PairProgramming", "Oups", "We get a network issue", NotificationType.ERROR).notify(project);
                 }
@@ -179,7 +180,7 @@ public class PairProgrammingServiceImpl implements PairProgrammingService {
 
     public void stop() {
         lastRemotesFiles = null;
-        remoteNeededFile = null;
+        remoteNeededFile = ContainerUtil.newArrayList();
         communicatioHelper.stop();
         syncFileManager.stop();
     }

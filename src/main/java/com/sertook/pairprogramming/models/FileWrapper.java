@@ -9,6 +9,7 @@ import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.progress.util.CommandLineProgress;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.sertook.pairprogramming.ActionDelegate;
@@ -80,7 +81,8 @@ public class FileWrapper implements Serializable {
                         if (size != 0) {
                             for (int i = size - 1; i >= 0; i--) {
                                 LineFragment line = linesList.get(i);
-                                document.replaceString(line.getStartOffset1(), line.getEndOffset1(), newText.subSequence(line.getStartOffset2(), line.getEndOffset2()));
+                                String newLine = StringUtil.convertLineSeparators(newText.subSequence(line.getStartOffset2(), line.getEndOffset2()).toString());
+                                document.replaceString(line.getStartOffset1(), line.getEndOffset1(), newLine);
                             }
                             FileDocumentManager.getInstance().saveDocument(document);
                         }
